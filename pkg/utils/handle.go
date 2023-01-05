@@ -3,8 +3,7 @@ package utils
 import "io"
 
 type Handler interface {
-	HandleJSONs(entrys []Entry) error
-	SaveToSqlite(filename string) error
+	HandleJSONs(entrys []Entry, filename string) error
 	IsPoem(path string) bool
 }
 
@@ -21,11 +20,7 @@ func DoTheHandle(reader io.ReaderAt, size int64, handler Handler, sqlitePath str
 		}
 	}
 
-	if err := handler.HandleJSONs(filteredEntries); err != nil {
-		return err
-	}
-
-	if err := handler.SaveToSqlite(sqlitePath); err != nil {
+	if err := handler.HandleJSONs(filteredEntries, sqlitePath); err != nil {
 		return err
 	}
 

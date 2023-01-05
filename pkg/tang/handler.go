@@ -17,15 +17,14 @@ type TangPoem struct {
 	ID         *string   `json:"id"`
 }
 
-const prefix = "chinese-poetry-master/json/poet.tang.0"
+const prefix = "chinese-poetry-master/json/poet.tang"
 
 type poemType = TangPoem
 
 type Handler struct {
-	poems []poemType
 }
 
-func (h *Handler) SaveToSqlite(filename string) error {
+func (h *Handler) saveToSqlite(poems []poemType, filename string) error {
 	db, err := sql.Open("sqlite3", filename)
 	if err != nil {
 		return err
@@ -44,10 +43,10 @@ func (h *Handler) SaveToSqlite(filename string) error {
 		return err
 	}
 
-	valueStrings := make([]string, 0, len(h.poems))
-	valueArgs := make([]interface{}, 0, len(h.poems)*4)
+	valueStrings := make([]string, 0, len(poems))
+	valueArgs := make([]interface{}, 0, len(poems)*4)
 
-	for _, poem := range h.poems {
+	for _, poem := range poems {
 		if poem.Author == nil || poem.Paragraphs == nil || poem.Title == nil || poem.ID == nil {
 			return fmt.Errorf("invalid poem: %+v", poem)
 		}
@@ -76,9 +75,11 @@ func (h *Handler) SaveToSqlite(filename string) error {
 	return nil
 }
 
-func (h *Handler) HandleJSONs(entrys []utils.Entry) error {
+func (h *Handler) HandleJSONs(entrys []utils.Entry, filename string) error {
 	fmt.Println("Handle JSONs")
 	for _, entry := range entrys {
+		poems := make([]poemType, 0)
+
 		fmt.Println("Handle " + entry.Path())
 		jsonReader := entry.GetReader()
 
@@ -87,7 +88,11 @@ func (h *Handler) HandleJSONs(entrys []utils.Entry) error {
 			return err
 		}
 
-		h.poems = append(h.poems, poem...)
+		poems = append(poems, poem...)
+
+		if err := h.saveToSqlite(poems, filename); err != nil {
+			return err
+		}
 
 		jsonReader.Close()
 	}
@@ -100,7 +105,6 @@ func (h *Handler) IsPoem(path string) bool {
 
 func New() *Handler {
 	handler := &Handler{}
-	handler.poems = make([]poemType, 0)
 
 	return handler
 }
