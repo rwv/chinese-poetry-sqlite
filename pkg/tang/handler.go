@@ -3,19 +3,20 @@ package tang
 import (
 	"database/sql"
 	"encoding/json"
-	"io"
+	"fmt"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/rwv/chinese-poetry-sqlite/pkg/utils"
 )
 
 type TangPoem struct {
-	Author     string   `json:"author"`
-	Paragraphs []string `json:"paragraphs"`
-	Title      string   `json:"title"`
-	ID         string   `json:"id"`
+	Author     *string   `json:"author"`
+	Paragraphs []*string `json:"paragraphs"`
+	Title      *string   `json:"title"`
+	ID         *string   `json:"id"`
 }
 
-const prefix = "chinese-poetry-master/json/poet.tang."
+const prefix = "chinese-poetry-master/json/poet.tang.0"
 
 type poemType = TangPoem
 
@@ -46,7 +47,20 @@ func (h *Handler) SaveToSqlite(filename string) error {
 	stmt, err = db.Prepare("INSERT INTO tang (author, paragraphs, title, id) VALUES (?, ?, ?, ?)")
 
 	for _, poem := range h.poems {
-		_, err = stmt.Exec(poem.Author, poem.Paragraphs, poem.Title, poem.ID)
+		if poem.Author == nil || poem.Paragraphs == nil || poem.Title == nil || poem.ID == nil {
+			return fmt.Errorf("invalid poem: %+v", poem)
+		}
+
+		paragraphsJsonText, err := json.Marshal(poem.Paragraphs)
+		if err != nil {
+			return err
+		}
+
+		_, err = stmt.Exec(poem.Author, string(paragraphsJsonText), poem.Title, poem.ID)
+
+		if err != nil {
+			return err
+		}
 	}
 
 	if err != nil {
@@ -56,13 +70,20 @@ func (h *Handler) SaveToSqlite(filename string) error {
 	return nil
 }
 
-func (h *Handler) HandleJSONs(jsonReaders []io.Reader) error {
-	for _, jsonReader := range jsonReaders {
-		var poem poemType
+func (h *Handler) HandleJSONs(entrys []utils.Entry) error {
+	fmt.Println("Handle JSONs")
+	for _, entry := range entrys {
+		fmt.Println("Handle " + entry.Path())
+		jsonReader := entry.GetReader()
+
+		var poem []poemType
 		if err := json.NewDecoder(jsonReader).Decode(&poem); err != nil {
 			return err
 		}
-		h.poems = append(h.poems, poem)
+
+		h.poems = append(h.poems, poem...)
+
+		jsonReader.Close()
 	}
 	return nil
 }

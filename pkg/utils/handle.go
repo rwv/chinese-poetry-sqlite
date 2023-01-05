@@ -3,7 +3,7 @@ package utils
 import "io"
 
 type Handler interface {
-	HandleJSONs(jsonReaders []io.Reader) error
+	HandleJSONs(entrys []Entry) error
 	SaveToSqlite(filename string) error
 	IsPoem(path string) bool
 }
@@ -16,17 +16,12 @@ func DoTheHandle(reader io.ReaderAt, size int64, handler Handler, sqlitePath str
 
 	var filteredEntries = make([]Entry, 0)
 	for _, entry := range entries {
-		if handler.IsPoem(entry.Path) {
+		if handler.IsPoem(entry.Path()) {
 			filteredEntries = append(filteredEntries, entry)
 		}
 	}
 
-	var jsonReaders = make([]io.Reader, 0)
-	for _, entry := range filteredEntries {
-		jsonReaders = append(jsonReaders, entry.GetReader())
-	}
-
-	if err := handler.HandleJSONs(jsonReaders); err != nil {
+	if err := handler.HandleJSONs(filteredEntries); err != nil {
 		return err
 	}
 

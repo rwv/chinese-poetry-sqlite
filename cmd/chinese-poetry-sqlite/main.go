@@ -20,9 +20,10 @@ func main() {
 		panic(err)
 	}
 
-	tangHandler := tang.New()
+	os.MkdirAll("output", os.ModePerm)
 
-	err = utils.DoTheHandle(file, fileInfo.Size(), tangHandler, "tang.sqlite")
+	tangHandler := tang.New()
+	err = utils.DoTheHandle(file, fileInfo.Size(), tangHandler, "output/tang.sqlite")
 
 	if err != nil {
 		panic(err)
