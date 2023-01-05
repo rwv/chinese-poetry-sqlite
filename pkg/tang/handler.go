@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rwv/chinese-poetry-sqlite/pkg/utils"
@@ -43,8 +44,8 @@ func (h *Handler) SaveToSqlite(filename string) error {
 		return err
 	}
 
-	// insert data
-	stmt, err = db.Prepare("INSERT INTO tang (author, paragraphs, title, id) VALUES (?, ?, ?, ?)")
+	valueStrings := make([]string, 0, len(h.poems))
+	valueArgs := make([]interface{}, 0, len(h.poems)*4)
 
 	for _, poem := range h.poems {
 		if poem.Author == nil || poem.Paragraphs == nil || poem.Title == nil || poem.ID == nil {
@@ -56,12 +57,17 @@ func (h *Handler) SaveToSqlite(filename string) error {
 			return err
 		}
 
-		_, err = stmt.Exec(poem.Author, string(paragraphsJsonText), poem.Title, poem.ID)
-
-		if err != nil {
-			return err
-		}
+		valueStrings = append(valueStrings, "(?, ?, ?, ?)")
+		valueArgs = append(valueArgs, poem.Author)
+		valueArgs = append(valueArgs, string(paragraphsJsonText))
+		valueArgs = append(valueArgs, poem.Title)
+		valueArgs = append(valueArgs, poem.ID)
 	}
+
+	stmtText := fmt.Sprintf("INSERT INTO tang (author, paragraphs, title, id) VALUES %s",
+		strings.Join(valueStrings, ","))
+
+	_, err = db.Exec(stmtText, valueArgs...)
 
 	if err != nil {
 		return err
