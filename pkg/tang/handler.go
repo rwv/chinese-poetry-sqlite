@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -14,12 +15,13 @@ type TangPoem struct {
 	Author     *string   `json:"author"`
 	Paragraphs []*string `json:"paragraphs"`
 	Title      *string   `json:"title"`
-	ID         *string   `json:"id"`
 }
 
-const prefix = "chinese-poetry-master/json/poet.tang"
+const prefix = "chinese-poetry-master/json/poet.tang."
 
 type poemType = TangPoem
+
+type Entries []utils.Entry
 
 type Handler struct {
 }
@@ -32,7 +34,7 @@ func (h *Handler) saveToSqlite(poems []poemType, filename string) error {
 	defer db.Close()
 
 	// create table
-	stmt, err := db.Prepare("CREATE TABLE IF NOT EXISTS tang (author TEXT, paragraphs TEXT, title TEXT, id TEXT PRIMARY KEY)")
+	stmt, err := db.Prepare("CREATE TABLE IF NOT EXISTS tang (author TEXT Not Null, paragraphs TEXT Not Null, title TEXT Not Null)")
 
 	if err != nil {
 		return err
@@ -44,10 +46,10 @@ func (h *Handler) saveToSqlite(poems []poemType, filename string) error {
 	}
 
 	valueStrings := make([]string, 0, len(poems))
-	valueArgs := make([]interface{}, 0, len(poems)*4)
+	valueArgs := make([]interface{}, 0, len(poems)*3)
 
 	for _, poem := range poems {
-		if poem.Author == nil || poem.Paragraphs == nil || poem.Title == nil || poem.ID == nil {
+		if poem.Author == nil || poem.Paragraphs == nil || poem.Title == nil {
 			return fmt.Errorf("invalid poem: %+v", poem)
 		}
 
@@ -56,14 +58,13 @@ func (h *Handler) saveToSqlite(poems []poemType, filename string) error {
 			return err
 		}
 
-		valueStrings = append(valueStrings, "(?, ?, ?, ?)")
+		valueStrings = append(valueStrings, "(?, ?, ?)")
 		valueArgs = append(valueArgs, poem.Author)
 		valueArgs = append(valueArgs, string(paragraphsJsonText))
 		valueArgs = append(valueArgs, poem.Title)
-		valueArgs = append(valueArgs, poem.ID)
 	}
 
-	stmtText := fmt.Sprintf("INSERT INTO tang (author, paragraphs, title, id) VALUES %s",
+	stmtText := fmt.Sprintf("INSERT INTO tang (author, paragraphs, title) VALUES %s",
 		strings.Join(valueStrings, ","))
 
 	_, err = db.Exec(stmtText, valueArgs...)
@@ -77,6 +78,8 @@ func (h *Handler) saveToSqlite(poems []poemType, filename string) error {
 
 func (h *Handler) HandleJSONs(entrys []utils.Entry, filename string) error {
 	fmt.Println("Handle JSONs")
+	// entrys sort by getIndex()
+
 	for _, entry := range entrys {
 		poems := make([]poemType, 0)
 
@@ -107,4 +110,11 @@ func New() *Handler {
 	handler := &Handler{}
 
 	return handler
+}
+
+func getIndex(path string) (int, error) {
+	// remove prefix and suffix
+	path = path[len(prefix) : len(path)-5]
+	intVar, err := strconv.Atoi(path)
+	return intVar, err
 }

@@ -20,6 +20,7 @@ func main() {
 		panic(err)
 	}
 
+	os.RemoveAll("output")
 	os.MkdirAll("output", os.ModePerm)
 
 	tangHandler := tang.New()
